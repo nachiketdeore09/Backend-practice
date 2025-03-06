@@ -1,4 +1,4 @@
-## install 3 npm packages
+## Install 3 npm packages
 
 1. mongoose
 2. express
@@ -8,6 +8,12 @@ run command:
 
 ```
 npm i mongoose express dotenv
+```
+
+## For handling Cookies and for Middlewares
+
+```
+npm i cookie-parser cors
 ```
 
 <hr>
