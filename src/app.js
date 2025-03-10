@@ -26,6 +26,14 @@ app.use(cookieParser())
 
 // ---------------------------------- End of Middlewares and Configurations ---------------------------------------------
 
+// import Routes
+
+import userRouter from "./routes/user.routes.js";
+
+// routes declaration
+//here imported routes are basically used as a middleware 
+// this way of breating an url is a standart practice
+app.use("/api/v1/users", userRouter);
 
 
 export { app }
