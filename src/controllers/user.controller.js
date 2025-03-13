@@ -17,8 +17,9 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // getting data from frontend
     const { fullName, email, username, password } = req.body;
-    console.log("req.body: ", req.body);
-    console.log("fullname: ", fullName);
+
+    // console.log("req.body: ", req.body);
+    // console.log("fullname: ", fullName);
 
 
     // validation of data
@@ -29,7 +30,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // check for existing user
-    const userExisted = User.findOne({
+    const userExisted = await User.findOne({
         $or: [{ username }, { email }]
     })
 
@@ -39,10 +40,13 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // check for images and avatar
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImagelocalPath = req.files?.coverImage[0]?.path;
+    let coverImagelocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImagelocalPath = req.files?.coverImage[0]?.path;
+    }
 
-    console.log("req.files containes: ", req.files)
-    console.log("req.files.avata contains: ", req.files.avatar);
+    // console.log("req.files containes: ", req.files)
+    // console.log("req.files.avata contains: ", req.files.avatar[0]);
 
     if (!avatarLocalPath) {
         throw new apiError(400, "Avatar is required");
@@ -52,7 +56,8 @@ const registerUser = asyncHandler(async (req, res) => {
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     const coverImage = await uploadOnCloudinary(coverImagelocalPath);
 
-    console.log("avatar url: ", avatar);
+    // console.log("avatar url: ", avatar);
+
     if (!avatar) {
         throw new apiError(400, "avatar file is required");
     }
@@ -67,10 +72,10 @@ const registerUser = asyncHandler(async (req, res) => {
         email,
     })
 
-    console.log("userEntry response contains: ", userEntry);
+    // console.log("userEntry response contains: ", userEntry);
 
     // removing password and refreshTokens feild
-    const createdUser = await User.findById(user._id).select(
+    const createdUser = await User.findById(userEntry._id).select(
         "-password -refreshToken"
     )
 
