@@ -4,6 +4,28 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        // finding user by ID
+        const user = await User.findById(userId);
+
+        //generating token by using methods defined in models
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        //saving only the referesh token feild in DB
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false });
+
+        //return the refresh and access token
+        return { accessToken, refreshToken };
+
+
+    } catch (error) {
+        throw new apiError(500, "Something went wrong while generating tokens");
+    }
+}
+
 const registerUser = asyncHandler(async (req, res) => {
     // get user details from frontend
     // validation - not empty
@@ -91,4 +113,99 @@ const registerUser = asyncHandler(async (req, res) => {
 
 })
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+    // req.bosy -> data
+    // username base login or email base login
+    // find the user
+    // check password
+    // access and refresh tokens
+    // send cookie
+
+    // accept data
+    const { username, password, email } = req.body;
+
+    // check if either username or email is present
+    if (!(username || email)) {
+        throw new apiError(400, "Username or Email is required");
+    }
+
+    // find user in database
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    })
+
+    if (!user) {
+        throw new apiError(404, "User does not exist , go and register first")
+    }
+
+    //check for correct user password
+    const isPasswordVaild = await user.isPasswordCorrect(password)
+
+    if (!isPasswordVaild) {
+        throw new apiError(401, "Invalid user Password");
+    }
+
+    // access and refresh tokens
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+    //SENDING COOKIES
+
+    // here we stored the updated user 
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    // for sending cookie first we set some options
+    // httpOnly,secure -> by default cookie are modifiable but after making this true cookies can't be modified from the front end
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new apiResponse(
+                200,
+                {
+                    user: loggedInUser, accessToken, refreshToken,
+                },
+                "User LoggedIn successfully",
+            )
+        )
+
+})
+
+const logoutUser = asyncHandler(async (req, res) => {
+    // this method just taked the user from the response which was added by the middleware and then makes its refreshToken as undefined
+    const userVar = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined,
+            }
+        },
+        {
+            new: true,
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(
+            new apiResponse(
+                200,
+                {},
+                "user Logged out successfull"
+            )
+        )
+
+})
+
+export { registerUser, loginUser, logoutUser };
